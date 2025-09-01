@@ -3,28 +3,36 @@
 * {
     box-sizing: border-box;
 }
-
 html,
 body,
 #root {
     height: 100%;
 }
 
+/* Базовая типографика */
 body {
     margin: 0;
     font-family: Inter, system-ui, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
     color: $txt;
+    background: $bg; /* бэкап-цвет */
+    position: relative;
+}
 
-    /* ВАЖНО: в SCSS корректный синтаксис без ошибок линтера */
+/* Фоновая текстура — фиксируется и всегда во всю страницу */
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
     background: radial-gradient(
-            1200px 600px at 80% -10%,
-            rgba(68, 209, 255, 0.12),
+            1100px 700px at 85% -10%,
+            rgba(25, 215, 255, 0.1),
             transparent 60%
         ),
         radial-gradient(
-            900px 500px at -20% 110%,
-            rgba(160, 139, 255, 0.1),
+            900px 600px at -20% 110%,
+            rgba(155, 123, 255, 0.1),
             transparent 60%
         ),
-        $bg;
+        linear-gradient(180deg, $bg 0%, $bg-2 100%);
 }
