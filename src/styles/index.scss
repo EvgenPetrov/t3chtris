@@ -1,0 +1,30 @@
+@import "./variables";
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+    height: 100%;
+}
+
+body {
+    margin: 0;
+    font-family: Inter, system-ui, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    color: $txt;
+
+    /* ВАЖНО: в SCSS корректный синтаксис без ошибок линтера */
+    background: radial-gradient(
+            1200px 600px at 80% -10%,
+            rgba(68, 209, 255, 0.12),
+            transparent 60%
+        ),
+        radial-gradient(
+            900px 500px at -20% 110%,
+            rgba(160, 139, 255, 0.1),
+            transparent 60%
+        ),
+        $bg;
+}

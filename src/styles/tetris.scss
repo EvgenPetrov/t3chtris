@@ -1,0 +1,218 @@
+@import "./variables";
+
+/* Кнопки */
+.btn {
+    background: linear-gradient(
+        180deg,
+        rgba(68, 209, 255, 0.18),
+        rgba(68, 209, 255, 0.06)
+    );
+    border: 1px solid rgba(68, 209, 255, 0.45);
+    // color: $txt;
+    padding: 8px 14px;
+    border-radius: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: 0.15s ease;
+    &:hover {
+        transform: translateY(-1px);
+    }
+    &.ghost {
+        background: transparent;
+        border-color: rgba(160, 139, 255, 0.45);
+    }
+}
+
+.t3chtris {
+    max-width: 1100px;
+    margin: 24px auto;
+    padding: 16px;
+
+    &__header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+
+        h1 {
+            margin: 0;
+            font-weight: 900;
+            letter-spacing: 0.5px;
+            text-shadow: $shadow-glow;
+            span {
+                color: $accent;
+            }
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 8px;
+        }
+    }
+
+    &__main {
+        display: grid;
+        grid-template-columns: 220px minmax(0, 1fr) 220px;
+        gap: 16px;
+        align-items: start;
+    }
+
+    &__footer {
+        margin-top: 12px;
+        display: flex;
+        justify-content: center;
+    }
+}
+
+/* ЛЕВАЯ ПАНЕЛЬ */
+.sidebar {
+    display: grid;
+    gap: 12px;
+    .panel {
+        background: $surface;
+        border: 1px solid $border;
+        border-radius: 14px;
+        padding: 12px;
+
+        h4 {
+            margin: 0 0 6px;
+            color: $muted;
+            font-weight: 700;
+        }
+
+        /* СЧЁТ/УРОВЕНЬ/ЛИНИИ — крупнее и темнее фон для контраста */
+        .metric {
+            font-size: 32px;
+            font-weight: 900;
+            letter-spacing: 0.4px;
+            color: #fff;
+            text-shadow: 0 1px 0 rgba(0, 0, 0, 0.4), 0 0 12px rgba(68, 209, 255, 0.25);
+        }
+    }
+}
+
+/* ПРАВАЯ ПАНЕЛЬ — следующая фигура */
+.next .panel {
+    background: $surface;
+    border: 1px solid $border;
+    border-radius: 14px;
+    padding: 12px;
+
+    h4 {
+        margin: 0 0 6px;
+        color: $muted;
+        font-weight: 700;
+    }
+
+    .next__grid {
+        display: grid;
+        grid-template-columns: repeat(4, 22px);
+        grid-auto-rows: 22px;
+        gap: $cell-gap;
+        background: $surface-2;
+        border-radius: 10px;
+        padding: 6px;
+    }
+}
+
+/* ДОСКА */
+.board-wrap {
+    position: relative;
+}
+
+.board {
+    background: $surface;
+    border: 1px solid $border;
+    border-radius: 16px;
+    padding: 8px;
+
+    display: grid;
+    grid-template-columns: repeat(10, $cell-size);
+    grid-auto-rows: $cell-size;
+    gap: $cell-gap;
+}
+
+/* КЛЕТКИ — заметнее */
+.cell {
+    width: $cell-size;
+    height: $cell-size;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 6px;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+
+    &--c1 {
+        background: linear-gradient(180deg, lighten($piece-1, 6%), $piece-1);
+        box-shadow: inset 0 0 0 1px rgba($piece-1, 0.35);
+    }
+    &--c2 {
+        background: linear-gradient(180deg, lighten($piece-2, 6%), $piece-2);
+        box-shadow: inset 0 0 0 1px rgba($piece-2, 0.35);
+    }
+    &--c3 {
+        background: linear-gradient(180deg, lighten($piece-3, 6%), $piece-3);
+        box-shadow: inset 0 0 0 1px rgba($piece-3, 0.35);
+    }
+    &--c4 {
+        background: linear-gradient(180deg, lighten($piece-4, 6%), $piece-4);
+        box-shadow: inset 0 0 0 1px rgba($piece-4, 0.35);
+    }
+    &--c5 {
+        background: linear-gradient(180deg, lighten($piece-5, 6%), $piece-5);
+        box-shadow: inset 0 0 0 1px rgba($piece-5, 0.35);
+    }
+    &--c6 {
+        background: linear-gradient(180deg, lighten($piece-6, 6%), $piece-6);
+        box-shadow: inset 0 0 0 1px rgba($piece-6, 0.35);
+    }
+    &--c7 {
+        background: linear-gradient(180deg, lighten($piece-7, 6%), $piece-7);
+        box-shadow: inset 0 0 0 1px rgba($piece-7, 0.35);
+    }
+}
+
+/* ПАУЗА / GAME OVER — без полосы, с контрастом */
+.overlay {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+
+    /* Вместо backdrop-filter — аккуратный слой, не будет «разделять» доску */
+    background: rgba(7, 10, 14, 0.35);
+
+    .overlay__card {
+        background: #0f1623;
+        border: 1px solid $border;
+        border-radius: 16px;
+        padding: 16px 18px;
+        text-align: center;
+        color: #fff;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+
+        h3 {
+            margin: 0 0 6px;
+            font-size: 20px;
+        }
+        p {
+            margin: 0;
+            color: $muted;
+        }
+    }
+}
+
+/* ControlsHint — выше и крупнее */
+.controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 18px;
+    padding: 12px 16px;
+    background: $surface;
+    border: 1px solid $border;
+    border-radius: 14px;
+    color: $txt;
+    font-size: 15px; /* крупнее */
+    transform: translateY(-6px); /* немного выше */
+    span {
+        white-space: nowrap;
+    }
+}
