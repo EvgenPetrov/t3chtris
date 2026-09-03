@@ -3,14 +3,22 @@
 * {
     box-sizing: border-box;
 }
-html,
-body,
-#root {
+
+html {
     height: 100%;
+}
+
+/* Новый контекст форматирования: внешние отступы .t3chtris остаются
+   внутри #root и не выталкивают body за пределы окна */
+#root {
+    display: flow-root;
 }
 
 /* Базовая типографика */
 body {
+    /* min-height вместо height: страница тянется за контентом,
+       а не фиксируется по высоте окна */
+    min-height: 100%;
     margin: 0;
     font-family: Inter, system-ui, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
     color: $txt;

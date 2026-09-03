@@ -3,7 +3,11 @@ import { ReactNode, useEffect, useState } from "react";
 const DESKTOP_MIN_WIDTH = 992;
 
 export default function DesktopOnlyGuard({ children }: { children: ReactNode }) {
-    const [isDesktop, setIsDesktop] = useState<boolean>(true);
+    // Проверка сразу при инициализации: иначе на узком окне на кадр
+    // показывается десктопная вёрстка
+    const [isDesktop, setIsDesktop] = useState(
+        () => window.innerWidth >= DESKTOP_MIN_WIDTH
+    );
 
     useEffect(() => {
         const check = () => setIsDesktop(window.innerWidth >= DESKTOP_MIN_WIDTH);

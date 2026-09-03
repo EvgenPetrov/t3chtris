@@ -7,6 +7,19 @@ import ControlsHint from "../components/ControlsHint";
 import DesktopOnlyGuard from "../components/DesktopOnlyGuard";
 import { useTetris } from "../game/useTetris";
 
+// Ориентируемся на e.code, а не на e.key: иначе P и R не работают
+// на нелатинской раскладке
+const HANDLED_CODES = new Set([
+    "ArrowLeft",
+    "ArrowRight",
+    "ArrowDown",
+    "ArrowUp",
+    "Space",
+    "KeyP",
+    "KeyR",
+]);
+const REPEATABLE_CODES = new Set(["ArrowLeft", "ArrowRight", "ArrowDown"]);
+
 export default function App() {
     const {
         viewBoard,
@@ -28,17 +41,25 @@ export default function App() {
     // Глобальные клавиши
     useEffect(() => {
         const onKeyDown = (e: KeyboardEvent) => {
+            if (!HANDLED_CODES.has(e.code)) return;
+            // стрелки и пробел иначе прокручивают страницу, а пробел ещё и
+            // «нажимает» кнопку, оказавшуюся в фокусе
+            e.preventDefault();
+            // автоповтор ОС нужен только для перемещения: с ним удержание
+            // пробела роняло фигуру за фигурой, а P мигал паузой
+            if (e.repeat && !REPEATABLE_CODES.has(e.code)) return;
+
             if (isGameOver) {
-                if (e.key.toLowerCase() === "r" || e.key === " ") startOrRestart();
+                if (e.code === "KeyR" || e.code === "Space") startOrRestart();
                 return;
             }
-            if (e.key === "ArrowLeft") moveLeft();
-            else if (e.key === "ArrowRight") moveRight();
-            else if (e.key === "ArrowDown") softDrop();
-            else if (e.key === "ArrowUp") rotateCW();
-            else if (e.key === " ") hardDrop();
-            else if (e.key.toLowerCase() === "p") togglePause();
-            else if (e.key.toLowerCase() === "r") startOrRestart();
+            if (e.code === "ArrowLeft") moveLeft();
+            else if (e.code === "ArrowRight") moveRight();
+            else if (e.code === "ArrowDown") softDrop();
+            else if (e.code === "ArrowUp") rotateCW();
+            else if (e.code === "Space") hardDrop();
+            else if (e.code === "KeyP") togglePause();
+            else if (e.code === "KeyR") startOrRestart();
         };
         window.addEventListener("keydown", onKeyDown);
         return () => window.removeEventListener("keydown", onKeyDown);
