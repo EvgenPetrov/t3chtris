@@ -204,7 +204,9 @@
     border-radius: 14px;
     color: $txt;
     font-size: 15px;
-    transform: translateY(-6px);
+    /* сдвиг вверх отступом, а не transform: transform оставлял под блоком
+       6px занятого, но пустого места в конце страницы */
+    margin-top: -6px;
     span {
         white-space: nowrap;
     }

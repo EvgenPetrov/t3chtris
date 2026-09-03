@@ -1,5 +1,5 @@
 import { Board, Piece, Shape } from "./types";
-import { COLS, ROWS, TETROMINOES } from "./constants";
+import { COLS, ROWS, SPAWN_Y, TETROMINOES } from "./constants";
 
 export const emptyBoard = (): Board =>
     Array.from({ length: ROWS }, () => Array(COLS).fill(0));
@@ -73,14 +73,43 @@ export function createPiece(shape: Shape): Piece {
     const id = shape.flat().find((v) => v)!; // взять ненулевое значение как id
     const width = shape[0].length;
     const startX = Math.floor((COLS - width) / 2);
-    return { shape, x: startX, y: -2, id };
+    return { shape, x: startX, y: SPAWN_Y, id };
 }
+
+// Фигура зафиксировалась, не успев войти в поле — это конец игры (lock out).
+// Без этой проверки стакан просто «замерзает»: фигуры продолжают появляться
+// над полем и исчезать при фиксации.
+export function isLockedOut(piece: Piece): boolean {
+    const { shape, y: py } = piece;
+    for (let y = 0; y < shape.length; y++) {
+        if (py + y >= 0) continue;
+        if (shape[y].some((cell) => cell !== 0)) return true;
+    }
+    return false;
+}
+
+// Смещения для wall kick: сначала пробуем сдвиг вбок (стенка, соседний блок),
+// затем подъём на клетку — иначе фигура не вращается впритык к полу и стакану
+const KICKS: ReadonlyArray<readonly [number, number]> = [
+    [0, 0],
+    [-1, 0],
+    [1, 0],
+    [-2, 0],
+    [2, 0],
+    [0, -1],
+    [-1, -1],
+    [1, -1],
+];
 
 export function tryRotateWithKicks(board: Board, piece: Piece): Piece | null {
     const rotated = rotateCW(piece.shape);
-    const kicks = [0, -1, 1, -2, 2];
-    for (const dx of kicks) {
-        const candidate: Piece = { ...piece, shape: rotated, x: piece.x + dx };
+    for (const [dx, dy] of KICKS) {
+        const candidate: Piece = {
+            ...piece,
+            shape: rotated,
+            x: piece.x + dx,
+            y: piece.y + dy,
+        };
         if (canPlace(board, candidate)) return candidate;
     }
     return null;

@@ -1,171 +1,154 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Board, Piece, Shape } from "./types";
-import { CLEAR_SCORES, speedForLevel } from "./constants";
+import {
+    QUEUE_REFILL_THRESHOLD,
+    levelForLines,
+    scoreForClear,
+    speedForLevel,
+} from "./constants";
 import {
     canPlace,
     clearLines,
     createPiece,
     emptyBoard,
+    isLockedOut,
     merge,
     nextBag,
     overlay,
     tryRotateWithKicks,
 } from "./utils";
 
+const EMPTY_SHAPE: Shape = [];
+
+const withRefill = (queue: Shape[]): Shape[] =>
+    queue.length <= QUEUE_REFILL_THRESHOLD ? [...queue, ...nextBag()] : queue;
+
 export function useTetris() {
-    const [board, setBoard] = useState<Board>(() => emptyBoard());
+    const [board, setBoard] = useState<Board>(emptyBoard);
     const [current, setCurrent] = useState<Piece | null>(null);
-    const [queue, setQueue] = useState<Shape[]>(() => nextBag());
+    const [queue, setQueue] = useState<Shape[]>(nextBag);
     const [score, setScore] = useState(0);
-    const [level, setLevel] = useState(0);
     const [lines, setLines] = useState(0);
     const [isPaused, setPaused] = useState(false);
     const [isGameOver, setGameOver] = useState(false);
 
-    const tickRef = useRef<number | null>(null);
+    // Уровень полностью определяется числом линий — отдельное состояние не нужно
+    const level = levelForLines(lines);
 
-    const nextShape = useMemo<Shape>(() => queue[0] ?? [], [queue]);
+    const nextShape = queue[0] ?? EMPTY_SHAPE;
     const viewBoard = useMemo(() => overlay(board, current), [board, current]);
 
-    const refillQueueIfNeeded = useCallback(() => {
-        setQueue((q) => (q.length <= 3 ? [...q, ...nextBag()] : q));
+    // Актуальное состояние для тика таймера: интервал не пересоздаётся
+    // на каждое движение игрока, поэтому гравитация идёт ровно
+    const gameRef = useRef({ board, current, queue, level });
+    useEffect(() => {
+        gameRef.current = { board, current, queue, level };
+    });
+
+    // Фиксация фигуры: очистка линий, очки и выдача следующей фигуры
+    const lockAndAdvance = useCallback((piece: Piece) => {
+        const { board, queue, level } = gameRef.current;
+
+        if (isLockedOut(piece)) {
+            setCurrent(null);
+            setGameOver(true);
+            return;
+        }
+
+        const { newBoard, lines: cleared } = clearLines(merge(board, piece));
+        setBoard(newBoard);
+        if (cleared > 0) {
+            setLines((l) => l + cleared);
+            setScore((s) => s + scoreForClear(cleared, level));
+        }
+
+        const [head, ...rest] = queue;
+        const nextPiece = createPiece(head);
+        if (!canPlace(newBoard, nextPiece)) {
+            setCurrent(null);
+            setGameOver(true);
+            return;
+        }
+        setQueue(withRefill(rest));
+        setCurrent(nextPiece);
     }, []);
 
+    // Первая фигура после старта и рестарта. Читает очередь из текущего рендера,
+    // поэтому повторный вызов в том же коммите выдаёт ту же фигуру
     const spawn = useCallback(() => {
-        setQueue((q) => {
-            const [head, ...rest] = q;
-            const piece = createPiece(head);
-            // Если не влазит — game over
-            if (!canPlace(board, piece)) {
-                setGameOver(true);
-                return q; // неважно уже
-            }
-            setCurrent(piece);
-            return rest;
-        });
-    }, [board]);
+        const [head, ...rest] = queue;
+        const piece = createPiece(head);
+        if (!canPlace(board, piece)) {
+            setGameOver(true);
+            return;
+        }
+        setCurrent(piece);
+        setQueue(withRefill(rest));
+    }, [board, queue]);
 
     const startOrRestart = useCallback(() => {
         setBoard(emptyBoard());
         setCurrent(null);
         setQueue(nextBag());
         setScore(0);
-        setLevel(0);
         setLines(0);
         setPaused(false);
         setGameOver(false);
     }, []);
 
+    useEffect(() => {
+        if (!current && !isGameOver) spawn();
+    }, [current, isGameOver, spawn]);
+
     // Основной цикл
     useEffect(() => {
         if (isPaused || isGameOver) return;
 
-        // при отсутствии текущей фигуры — спавним
-        if (!current) {
-            spawn();
-            return;
-        }
-
-        const speed = speedForLevel(level);
         const id = window.setInterval(() => {
-            setCurrent((cur) => {
-                if (!cur) return cur;
-                const moved = { ...cur, y: cur.y + 1 };
-                if (canPlace(board, moved)) return moved;
+            const { board, current } = gameRef.current;
+            if (!current) return;
 
-                // Лочим фигуру
-                const merged = merge(board, cur);
-                const { newBoard, lines: cleared } = clearLines(merged);
+            const moved = { ...current, y: current.y + 1 };
+            if (canPlace(board, moved)) setCurrent(moved);
+            else lockAndAdvance(current);
+        }, speedForLevel(level));
 
-                setBoard(newBoard);
-                if (cleared > 0) {
-                    setLines((l) => {
-                        const newLines = l + cleared;
-                        const newLevel = Math.floor(newLines / 10);
-                        setLevel(newLevel);
-                        return newLines;
-                    });
+        return () => window.clearInterval(id);
+    }, [isPaused, isGameOver, level, lockAndAdvance]);
 
-                    // ✅ без any
-                    const bonus = CLEAR_SCORES[cleared as 1 | 2 | 3 | 4] ?? 0;
-                    setScore((s) => s + bonus * (level + 1));
-                }
-
-                // Новая фигура
-                const next = queue[0];
-                const rest = queue.slice(1);
-                const newPiece = createPiece(next);
-                if (!canPlace(newBoard, newPiece)) {
-                    setGameOver(true);
-                    return null;
-                }
-                setQueue(rest);
-                return newPiece;
-            });
-            refillQueueIfNeeded();
-        }, speed);
-
-        tickRef.current = id;
-        return () => {
-            if (tickRef.current) clearInterval(tickRef.current);
+    // Уход на другую вкладку ставит паузу; снимает её игрок сам
+    useEffect(() => {
+        const onVisibilityChange = () => {
+            if (document.hidden) setPaused(true);
         };
-    }, [board, current, isPaused, isGameOver, level, queue, refillQueueIfNeeded, spawn]);
+        document.addEventListener("visibilitychange", onVisibilityChange);
+        return () =>
+            document.removeEventListener("visibilitychange", onVisibilityChange);
+    }, []);
 
-    const moveLeft = useCallback(() => {
-        if (!current || isPaused || isGameOver) return;
-        const candidate = { ...current, x: current.x - 1 };
-        if (canPlace(board, candidate)) setCurrent(candidate);
-    }, [board, current, isPaused, isGameOver]);
+    const moveBy = useCallback(
+        (dx: number, dy: number) => {
+            if (!current || isPaused || isGameOver) return;
+            const candidate = { ...current, x: current.x + dx, y: current.y + dy };
+            if (canPlace(board, candidate)) setCurrent(candidate);
+        },
+        [board, current, isPaused, isGameOver]
+    );
 
-    const moveRight = useCallback(() => {
-        if (!current || isPaused || isGameOver) return;
-        const candidate = { ...current, x: current.x + 1 };
-        if (canPlace(board, candidate)) setCurrent(candidate);
-    }, [board, current, isPaused, isGameOver]);
-
-    const softDrop = useCallback(() => {
-        if (!current || isPaused || isGameOver) return;
-        const candidate = { ...current, y: current.y + 1 };
-        if (canPlace(board, candidate)) setCurrent(candidate);
-    }, [board, current, isPaused, isGameOver]);
+    const moveLeft = useCallback(() => moveBy(-1, 0), [moveBy]);
+    const moveRight = useCallback(() => moveBy(1, 0), [moveBy]);
+    const softDrop = useCallback(() => moveBy(0, 1), [moveBy]);
 
     const hardDrop = useCallback(() => {
         if (!current || isPaused || isGameOver) return;
-        let drop = { ...current };
+        let drop = current;
         while (canPlace(board, { ...drop, y: drop.y + 1 })) {
             drop = { ...drop, y: drop.y + 1 };
         }
-        // Лочим
-        const merged = merge(board, drop);
-        const { newBoard, lines: cleared } = clearLines(merged);
-        setBoard(newBoard);
-        if (cleared > 0) {
-            setLines((l) => {
-                const newLines = l + cleared;
-                const newLevel = Math.floor(newLines / 10);
-                setLevel(newLevel);
-                return newLines;
-            });
+        lockAndAdvance(drop);
+    }, [board, current, isPaused, isGameOver, lockAndAdvance]);
 
-            // ✅ без any (второе место)
-            const bonus = CLEAR_SCORES[cleared as 1 | 2 | 3 | 4] ?? 0;
-            setScore((s) => s + bonus * (level + 1));
-        }
-        // Новая фигура
-        const next = queue[0];
-        const rest = queue.slice(1);
-        const newPiece = createPiece(next);
-        if (!canPlace(newBoard, newPiece)) {
-            setGameOver(true);
-            setCurrent(null);
-            return;
-        }
-        setQueue(rest);
-        setCurrent(newPiece);
-        refillQueueIfNeeded();
-    }, [board, current, isPaused, isGameOver, level, queue, refillQueueIfNeeded]);
-
-    const rotateCWAction = useCallback(() => {
+    const rotateCW = useCallback(() => {
         if (!current || isPaused || isGameOver) return;
         const rotated = tryRotateWithKicks(board, current);
         if (rotated) setCurrent(rotated);
@@ -175,11 +158,6 @@ export function useTetris() {
         if (isGameOver) return;
         setPaused((p) => !p);
     }, [isGameOver]);
-
-    // При старте, если current пуст, заспавнить
-    useEffect(() => {
-        if (!current && !isGameOver) spawn();
-    }, [current, isGameOver, spawn]);
 
     return {
         viewBoard,
@@ -195,6 +173,6 @@ export function useTetris() {
         softDrop,
         moveLeft,
         moveRight,
-        rotateCW: rotateCWAction,
+        rotateCW,
     };
 }
